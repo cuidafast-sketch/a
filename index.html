@@ -14,37 +14,60 @@
 </head>
 <body>
   <div id="map"></div>
-<!-- Firebase -->
-<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore-compat.js"></script>
 
-<script>
-  // Configuração do Firebase
-  const firebaseConfig = {
-    apiKey: "SUA_API_KEY",
-    authDomain: "SEU_PROJETO.firebaseapp.com",
-    projectId: "SEU_PROJETO",
-    storageBucket: "SEU_PROJETO.appspot.com",
-    messagingSenderId: "SENDER_ID",
-    appId: "APP_ID"
-  };
-
-  // Inicializa Firebase
-  firebase.initializeApp(firebaseConfig);
-  const db = firebase.firestore();
-</script>
+  <!-- Firebase compat -->
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore-compat.js"></script>
 
   <!-- Leaflet JS -->
   <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
 
-  <!-- Firebase JS -->
-  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore-compat.js"></script>
+  <script>
+    // Inicializa Firebase
+    const firebaseConfig = {
+      apiKey: "SUA_API_KEY",
+      authDomain: "SEU_PROJETO.firebaseapp.com",
+      projectId: "SEU_PROJETO",
+      storageBucket: "SEU_PROJETO.appspot.com",
+      messagingSenderId: "SENDER_ID",
+      appId: "APP_ID"
+    };
+    firebase.initializeApp(firebaseConfig);
+    const db = firebase.firestore();
 
-  <!-- Seus scripts -->
-  <script type="module" src="firebaseConfig.js"></script>
-  <script type="module" src="mapService.js"></script>
-  <script type="module" src="script.js"></script>
+    // Inicializa Leaflet
+    const map = L.map('map').setView([-23.5505, -46.6333], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Função para carregar pontos do Firebase
+    async function mostrarLocais() {
+      const snapshot = await db.collection("locais").get();
+      snapshot.docs.forEach(doc => {
+        const data = doc.data();
+        const lat = data.geopoint.latitude;
+        const lng = data.geopoint.longitude;
+        L.marker([lat, lng])
+          .addTo(map)
+          .bindPopup(`Salvo em: ${new Date(data.criadoEm.seconds * 1000).toLocaleString()}`);
+      });
+    }
+
+    mostrarLocais();
+
+    // Adicionar pontos ao clicar
+    map.on("click", async e => {
+      const { lat, lng } = e.latlng;
+      await db.collection("locais").add({
+        geopoint: new firebase.firestore.GeoPoint(lat, lng),
+        criadoEm: firebase.firestore.Timestamp.now()
+      });
+      L.marker([lat, lng])
+        .addTo(map)
+        .bindPopup(`Novo ponto: ${lat.toFixed(4)}, ${lng.toFixed(4)}`)
+        .openPopup();
+    });
+  </script>
 </body>
 </html>
-
