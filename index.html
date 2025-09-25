@@ -1,73 +1,51 @@
-<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Mapa GeoPoint</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet/dist/leaflet.css" />
-  <style>
-    #map {
-      height: 100vh;
-      width: 100%;
-    }
-  </style>
-</head>
-<body>
-  <div id="map"></div>
+<script>
+  // 1️⃣ Inicializa Firebase
+  const firebaseConfig = {
+    apiKey: "SUA_API_KEY",
+    authDomain: "SEU_PROJETO.firebaseapp.com",
+    projectId: "SEU_PROJETO",
+    storageBucket: "SEU_PROJETO.appspot.com",
+    messagingSenderId: "SENDER_ID",
+    appId: "APP_ID"
+  };
+  firebase.initializeApp(firebaseConfig);
+  const db = firebase.firestore();
 
-  <!-- Firebase compat -->
-  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.14.0/firebase-firestore-compat.js"></script>
+  // 2️⃣ Inicializa Leaflet
+  const map = L.map('map').setView([-23.5505, -46.6333], 12);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; OpenStreetMap contributors'
+  }).addTo(map);
 
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet/dist/leaflet.js"></script>
+  // 3️⃣ Função para mostrar pontos do Firestore
+  async function mostrarLocais() {
+    const snapshot = await db.collection("locais").get();
+    snapshot.docs.forEach(doc => {
+      const data = doc.data();
+      const lat = data.geopoint.latitude;
+      const lng = data.geopoint.longitude;
 
-  <script>
-    // Inicializa Firebase
-    const firebaseConfig = {
-      apiKey: "SUA_API_KEY",
-      authDomain: "SEU_PROJETO.firebaseapp.com",
-      projectId: "SEU_PROJETO",
-      storageBucket: "SEU_PROJETO.appspot.com",
-      messagingSenderId: "SENDER_ID",
-      appId: "APP_ID"
-    };
-    firebase.initializeApp(firebaseConfig);
-    const db = firebase.firestore();
-
-    // Inicializa Leaflet
-    const map = L.map('map').setView([-23.5505, -46.6333], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
-
-    // Função para carregar pontos do Firebase
-    async function mostrarLocais() {
-      const snapshot = await db.collection("locais").get();
-      snapshot.docs.forEach(doc => {
-        const data = doc.data();
-        const lat = data.geopoint.latitude;
-        const lng = data.geopoint.longitude;
-        L.marker([lat, lng])
-          .addTo(map)
-          .bindPopup(`Salvo em: ${new Date(data.criadoEm.seconds * 1000).toLocaleString()}`);
-      });
-    }
-
-    mostrarLocais();
-
-    // Adicionar pontos ao clicar
-    map.on("click", async e => {
-      const { lat, lng } = e.latlng;
-      await db.collection("locais").add({
-        geopoint: new firebase.firestore.GeoPoint(lat, lng),
-        criadoEm: firebase.firestore.Timestamp.now()
-      });
       L.marker([lat, lng])
         .addTo(map)
-        .bindPopup(`Novo ponto: ${lat.toFixed(4)}, ${lng.toFixed(4)}`)
-        .openPopup();
+        .bindPopup(`Salvo em: ${new Date(data.criadoEm.seconds * 1000).toLocaleString()}`);
     });
-  </script>
-</body>
-</html>
+  }
+
+  // 4️⃣ Chama a função para exibir os pontos
+  mostrarLocais();
+
+  // 5️⃣ Adicionar novos pontos ao clicar no mapa
+  map.on("click", async (e) => {
+    const { lat, lng } = e.latlng;
+
+    await db.collection("locais").add({
+      geopoint: new firebase.firestore.GeoPoint(lat, lng),
+      criadoEm: firebase.firestore.Timestamp.now()
+    });
+
+    L.marker([lat, lng])
+      .addTo(map)
+      .bindPopup(`Novo ponto: ${lat.toFixed(4)}, ${lng.toFixed(4)}`)
+      .openPopup();
+  });
+</script>
